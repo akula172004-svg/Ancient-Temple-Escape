@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Побег из древнего храма</title>
+  <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+  <div id="ambient-bg"></div>
+
+  <div id="app">
+    <!-- Стартовый экран -->
+    <div id="start-screen" class="screen menu-screen active">
+      <div class="menu-frame">
+        <div class="menu-pillars">
+          <div class="pillar left"></div>
+          <div class="pillar right"></div>
+        </div>
+        <div class="menu-glow"></div>
+        <div class="particles" aria-hidden="true"></div>
+        <div class="screen-content menu-content">
+          <div class="ornament top">✦ ☥ ✦</div>
+          <div class="title-block">
+            <span class="symbol">☥</span>
+            <h1>Побег из<br><span class="title-accent">древнего храма</span></h1>
+            <span class="symbol">☥</span>
+          </div>
+          <p class="subtitle">Пройди 5 залов · Собери сокровища · Обойди ловушки</p>
+          <div class="feature-tags">
+            <span>5 уровней</span>
+            <span>3 героя</span>
+            <span>стражи</span>
+            <span>босс</span>
+          </div>
+          <div class="controls-hint">
+            <span>WASD</span> или <span>стрелки</span> — движение
+          </div>
+          <p id="save-info" class="save-info hidden"></p>
+          <button id="btn-continue" class="btn-primary btn-glow hidden">Продолжить</button>
+          <button id="btn-start" class="btn-primary">Новая игра</button>
+          <div class="ornament bottom">◆ ❖ ◆</div>
+        </div>
+        <div class="corner-torch left"></div>
+        <div class="corner-torch right"></div>
+      </div>
+    </div>
+
+    <!-- Выбор персонажа -->
+    <div id="char-screen" class="screen menu-screen">
+      <div class="menu-frame">
+        <div class="menu-glow"></div>
+        <div class="screen-content menu-content">
+          <div class="ornament top">✦ ☥ ✦</div>
+          <h2 class="char-title">Выбери героя</h2>
+          <p id="char-description" class="subtitle">Искатель приключений в песках древности</p>
+          <div id="char-cards" class="char-cards"></div>
+          <button id="btn-char-start" class="btn-primary btn-glow">В храм!</button>
+          <button id="btn-char-back" class="btn-secondary">← Назад</button>
+          <div class="ornament bottom">◆ ❖ ◆</div>
+        </div>
+        <div class="corner-torch left"></div>
+        <div class="corner-torch right"></div>
+      </div>
+    </div>
+
+    <!-- Игровой экран -->
+    <div id="game-screen" class="screen">
+      <div class="hud">
+        <div class="hud-item">
+          <span class="hud-label">Уровень</span>
+          <span id="level-info" class="hud-value">1 / 5</span>
+        </div>
+        <div class="hud-item hud-wide">
+          <span class="hud-label">Локация</span>
+          <span id="level-name" class="hud-value level-name">Зал Входа</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Время</span>
+          <span id="timer" class="hud-value">00:00</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Очки</span>
+          <span id="score" class="hud-value">0</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Жизни</span>
+          <span id="lives" class="hud-value lives-display">♥♥♥</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Кристаллы</span>
+          <span id="crystal-status" class="hud-value">0 / 0</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Ключ</span>
+          <span id="key-status" class="hud-value key-missing">✗</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Дверь</span>
+          <span id="door-status" class="hud-value door-locked">🔒</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Эффект</span>
+          <span id="powerup-status" class="hud-value powerup-none">—</span>
+        </div>
+        <button id="btn-mute" class="btn-mute" title="Звук">🔊</button>
+      </div>
+      <div id="boss-hud" class="boss-hud hidden">
+        <span class="boss-label">☥ Хранитель храма</span>
+        <div class="boss-hp-bar"><div id="boss-hp-fill" class="boss-hp-fill"></div></div>
+        <span id="boss-hp-text" class="boss-hp-text">5 / 5</span>
+        <span class="boss-hint">Пробел — атака (нужен ключ)</span>
+      </div>
+      <canvas id="game-canvas"></canvas>
+      <div id="pickup-toast" class="pickup-toast hidden"></div>
+      <div id="damage-flash" class="damage-flash hidden"></div>
+    </div>
+
+    <!-- Экран прохождения уровня -->
+    <div id="level-screen" class="screen menu-screen">
+      <div class="menu-frame level-frame">
+        <div class="menu-glow green"></div>
+        <div class="screen-content">
+          <div class="level-complete-icon">✦</div>
+          <h2 id="level-complete-title">Уровень пройден!</h2>
+          <p id="level-complete-name" class="subtitle">Зал Входа</p>
+          <p class="level-bonus">Бонус уровня: <span id="level-bonus">+0</span> очков</p>
+          <p class="final-time">Всего очков: <span id="level-total-score">0</span></p>
+          <button id="btn-next-level" class="btn-primary btn-glow">Следующий уровень</button>
+        </div>
+        <div class="corner-torch left"></div>
+        <div class="corner-torch right"></div>
+      </div>
+    </div>
+
+    <!-- Экран поражения -->
+    <div id="gameover-screen" class="screen menu-screen">
+      <div class="menu-frame defeat-frame">
+        <div class="menu-glow red"></div>
+        <div class="cracks" aria-hidden="true"></div>
+        <div class="screen-content">
+          <div class="gameover-icon">☠</div>
+          <h2>Жизни закончились</h2>
+          <p class="defeat-text">Тени храма поглотили тебя навсегда...</p>
+          <div class="stats-box defeat">
+            <p>Очки: <span id="gameover-score">0</span></p>
+            <p>Достигнут уровень: <span id="gameover-level">1</span></p>
+          </div>
+          <button id="btn-retry" class="btn-primary">Попробовать снова</button>
+        </div>
+        <div class="corner-torch left dim"></div>
+        <div class="corner-torch right dim"></div>
+      </div>
+    </div>
+
+    <!-- Экран победы -->
+    <div id="victory-screen" class="screen menu-screen">
+      <div class="menu-frame victory-frame">
+        <div class="victory-rays" aria-hidden="true"></div>
+        <div class="menu-glow gold"></div>
+        <div class="confetti" aria-hidden="true"></div>
+        <div class="screen-content">
+          <div class="victory-icon">🏆</div>
+          <h2>Ты сбежал!</h2>
+          <p class="victory-text">Все пять залов древнего храма позади.<br>Легенда о твоём побеге будет жить веками.</p>
+          <div class="stats-box victory">
+            <p>Время: <span id="final-timer">00:00</span></p>
+            <p>Итоговый счёт: <span id="final-score">0</span></p>
+          </div>
+          <button id="btn-restart" class="btn-primary btn-glow">Играть снова</button>
+        </div>
+        <div class="corner-torch left bright"></div>
+        <div class="corner-torch right bright"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/levels.js"></script>
+  <script src="js/maze-generator.js"></script>
+  <script src="js/save.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/characters.js"></script>
+  <script src="js/enemies.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
