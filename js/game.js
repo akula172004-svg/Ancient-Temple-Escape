@@ -402,6 +402,10 @@ function loadLevel(index) {
   invincibleUntil = Date.now() + 1500;
   updateHUD();
   updateBossHUD();
+
+  if (enemies.length) {
+    showPickupToast('Пробел — оттолкнуть стража');
+  }
 }
 
 // ============================================================
@@ -416,7 +420,7 @@ function onKeyDown(e) {
   }
   if (key === ' ' && state === GameState.PLAYING) {
     e.preventDefault();
-    tryAttackBoss();
+    if (!tryAttackBoss()) tryRepelEnemies();
   }
 }
 

@@ -10,6 +10,14 @@ const BOSS_ATTACK_RANGE = 52;
 const BOSS_ATTACK_COOLDOWN = 700;
 const MAX_ENEMY_SPAWN_ATTEMPTS = 30;
 
+// Отталкивание стражей: игрок не может их убить, но может оглушить и отбросить,
+// чтобы гарантированно пройти мимо (нажатие Пробела)
+const REPEL_RANGE = 78;
+const REPEL_COOLDOWN = 900;
+const REPEL_STUN = 2400;
+const REPEL_PUSH_CELLS = 3;
+let lastRepel = 0;
+
 // TILE_SIZE объявлен в game.js (загружается позже), поэтому вычисляем при вызове
 function enemySafeSpawnDist() {
   return TILE_SIZE * 5;
@@ -512,6 +520,7 @@ function resetEnemyPositions() {
     }
     e.lungeUntil = 0;
     e.wanderTimer = 0;
+    e.stunnedUntil = 0;
     snapEnemyToGrid(e);
   }
   if (boss && !bossDefeated) {
@@ -600,8 +609,60 @@ function updateBoss() {
   boss.renderY += (boss.y - boss.renderY) * 0.2;
 }
 
+function isEnemyStunned(e) {
+  return !!e.stunnedUntil && Date.now() < e.stunnedUntil;
+}
+
+function pushEnemyBack(e, cells) {
+  for (let i = 0; i < cells; i++) {
+    const pos = enemyGridPos(e);
+    const pCell = playerGridPos();
+    let best = null;
+    let bestDist = Math.abs(pos.col - pCell.col) + Math.abs(pos.row - pCell.row);
+    for (const [dc, dr] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+      const nc = pos.col + dc;
+      const nr = pos.row + dr;
+      if (!canEnemyWalk(nc, nr, doorOpen)) continue;
+      const dist = Math.abs(nc - pCell.col) + Math.abs(nr - pCell.row);
+      if (dist > bestDist) { bestDist = dist; best = { col: nc, row: nr }; }
+    }
+    if (!best) break;
+    const c = cellCenter(best.col, best.row);
+    e.x = c.x;
+    e.y = c.y;
+  }
+  snapEnemyToGrid(e);
+}
+
+// Оглушить и отбросить всех стражей рядом с игроком. Возвращает true, если кого-то задели.
+function tryRepelEnemies() {
+  const now = Date.now();
+  if (now - lastRepel < REPEL_COOLDOWN) return false;
+
+  let hit = false;
+  for (const e of enemies) {
+    if (Math.hypot(e.x - player.x, e.y - player.y) <= REPEL_RANGE) {
+      pushEnemyBack(e, REPEL_PUSH_CELLS);
+      e.stunnedUntil = now + REPEL_STUN;
+      hit = true;
+    }
+  }
+
+  if (hit) {
+    lastRepel = now;
+    if (typeof Audio !== 'undefined' && Audio.play) Audio.play('door');
+    if (typeof showPickupToast === 'function') showPickupToast('Страж отброшен!');
+  }
+  return hit;
+}
+
 function updateEnemies() {
   for (const e of enemies) {
+    if (isEnemyStunned(e)) {
+      e.renderX += (e.x - e.renderX) * 0.3;
+      e.renderY += (e.y - e.renderY) * 0.3;
+      continue;
+    }
     switch (e.type) {
       case 'patrol': updatePatrolEnemy(e); break;
       case 'chaser': updateChaserEnemy(e); break;
@@ -620,6 +681,7 @@ function checkEnemyCollisions(hurtCallback) {
 
   const hitDist = (PLAYER_SIZE + ENEMY_SIZE) / 2 - 4;
   for (const e of enemies) {
+    if (isEnemyStunned(e)) continue;
     if (canEnemyHitPlayer(e, hitDist)) {
       hurtCallback({ message: `${ENEMY_DEFS[e.type]?.label || 'Страж'} поймал тебя!`, sound: 'guard' });
       return;
@@ -677,7 +739,10 @@ function drawEnemy(ctx, e, frame) {
   const py = e.renderY;
   const s = ENEMY_SIZE;
   const half = s / 2;
-  const bob = Math.sin(frame * 0.2 + px) * 1.5;
+  const stunned = isEnemyStunned(e);
+  const bob = stunned ? 0 : Math.sin(frame * 0.2 + px) * 1.5;
+
+  if (stunned) ctx.globalAlpha = 0.55;
 
   const eyeGlow = ctx.createRadialGradient(px, py - 4, 0, px, py, 20);
   eyeGlow.addColorStop(0, `${def.eye}40`);
@@ -718,6 +783,20 @@ function drawEnemy(ctx, e, frame) {
     ctx.font = '10px serif';
     ctx.textAlign = 'center';
     ctx.fillText('☥', px, py + 4 + bob);
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.globalAlpha = 1;
+
+  if (stunned) {
+    ctx.fillStyle = '#ffe066';
+    ctx.font = 'bold 12px serif';
+    ctx.textAlign = 'center';
+    for (let i = 0; i < 3; i++) {
+      const a = frame * 0.15 + (i * Math.PI * 2) / 3;
+      ctx.globalAlpha = 0.6 + Math.sin(frame * 0.2 + i) * 0.3;
+      ctx.fillText('✦', px + Math.cos(a) * 12, py - half - 4 + Math.sin(a) * 4);
+    }
     ctx.globalAlpha = 1;
   }
 }
